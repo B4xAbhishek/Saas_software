@@ -1,0 +1,97 @@
+<template>
+  <div>
+    <!-- menu level 1 -->
+    <nav-menu-item v-for="(level1Item, level1Index) in menuItems" :key="level1Index" :menu-item="level1Item">
+      <template v-if="level1Item.items">
+
+        <!-- menu level 2 -->
+        <nav-menu-item
+          v-for="(level2Item, level2Index) in subMenuItems"
+          :key="level2Index"
+          :menu-item="level2Item"
+          subgroup
+          small
+        >
+          <template v-if="level2Item.items">
+
+            <!-- menu level 3 -->
+            <nav-menu-item
+              v-for="(level3Item, level3Index) in level2Item.items"
+              :key="level3Index"
+              :menu-item="level3Item"
+              small
+            />
+          </template>
+        </nav-menu-item>
+      </template>
+    </nav-menu-item>
+  </div>
+</template>
+
+<script>
+import NavMenuItem from './NavMenuItem'
+import { mapState } from 'vuex'
+
+/*
+|---------------------------------------------------------------------
+| Navigation Menu Component
+|---------------------------------------------------------------------
+|
+| Multi-layer navigation menu
+|
+| menu: [{ text: 'Menu Levels',
+|    items: [
+|      { text: 'Menu Levels 2.1' },
+|      { text: 'Menu Levels 2.2',
+|        items: [
+|          { text: 'Menu Levels 3.1' },
+|          { text: 'Menu Levels 3.2' }
+|        ]
+|      }
+|    ]
+|  }]
+|
+*/
+export default {
+  components: {
+    NavMenuItem
+  },
+  props: {
+    menu: {
+      type: Array,
+      default: () => []
+    }
+  },
+  computed: {
+    ...mapState({
+      user: (store) => store.auth.user
+    }),
+    menuItems() {
+      const user = this.getLoggedUser()
+
+      if (user) {
+        return this.menu.filter((item) => {
+          return item.accessLevel.includes(user.type)
+        })
+      }
+
+      return []
+    },
+    subMenuItems() {
+      const user = this.getLoggedUser()
+
+      if (user) {
+        const subItems = this.menu.filter((menu) => menu.items)
+
+        const adminLinks = subItems[0].items
+
+        return adminLinks.filter((item) => {
+          return item.accessLevel.includes(user.type)
+        })
+      }
+
+      return []
+    }
+  }
+}
+</script>

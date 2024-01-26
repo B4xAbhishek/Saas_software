@@ -1,0 +1,66 @@
+image: atlassian/default-image:3
+
+definitions:
+  steps:
+    - step: &build
+        name: Build Docker Image
+        image: node:17.9.1-bullseye
+        script:
+          - node -v
+          - yarn -v
+          - npm -v
+          - export NODE_OPTIONS=--openssl-legacy-provider
+          - yarn
+          - yarn build
+        artifacts:
+          - "dist/**"
+    - step: &deploy
+        name: Deploy to Nomad
+        script:
+          - IMAGE_NAME=$BITBUCKET_REPO_SLUG
+          - docker build --file=./Dockerfile --tag=${IMAGE_NAME} .
+          - echo ${DOCKER_REPO_PASSWORD} | docker login --username "$DOCKER_REPO_PASSWORD" --password-stdin "$DOCKER_REPO"
+          - IMAGE=${DOCKER_REPO}/frontend:${BITBUCKET_DEPLOYMENT_ENVIRONMENT}
+          - docker tag "${IMAGE_NAME}" "${IMAGE}"
+          - docker push -q "${IMAGE}"
+          - docker image inspect "${IMAGE}" | jq -r .[0].RepoDigests[0] > IMAGE_SHA_DIGEST.txt
+          - cat IMAGE_SHA_DIGEST.txt
+          - IMAGE_SHA_DIGEST=$(cat IMAGE_SHA_DIGEST.txt)
+          - curl -L https://releases.hashicorp.com/levant/0.3.1/levant_0.3.1_linux_amd64.zip -o levant.zip
+          - unzip levant.zip -d /usr/local/bin
+          - levant -help
+          - GIT_BRANCH=$(git branch --show-current)
+          - GIT_SHA=$(git rev-parse $GIT_BRANCH)
+          - NOMAD_SERVICE_NAME=frontend
+          - NOMAD_ENV=${BITBUCKET_DEPLOYMENT_ENVIRONMENT}
+          - sed -i "s/JOB_NAME/${NOMAD_SERVICE_NAME}/g" web.nomad
+          - levant deploy 
+            -var build_image="${IMAGE_SHA_DIGEST}" 
+            -var GIT_SHA="${GIT_SHA}" 
+            -var docker_id_password="${DOCKER_REPO_PASSWORD}" 
+            -var NOMAD_SERVICE_NAME=${NOMAD_SERVICE_NAME} 
+            -var NOMAD_ENV=${NOMAD_ENV} 
+            web.nomad
+        services:
+          - docker
+        caches:
+          - docker
+        artifacts:
+          - "*.tar"
+          - "*.txt"
+
+pipelines:
+  branches:
+    master:
+      - step: *build
+      - step:
+          <<: *deploy
+          deployment: production
+          trigger: manual
+
+    development.main:
+      - step: *build
+      - step:
+          <<: *deploy
+          deployment: dev
+          trigger: automatic

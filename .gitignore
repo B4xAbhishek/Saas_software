@@ -1,0 +1,38 @@
+# Node.js
+node_modules/
+
+# Build files
+/dist/
+
+# Logs
+npm-debug.log
+yarn-error.log
+
+# Editor directories and files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# .env file (if using environment variables)
+.env
+
+# Dependency directories
+/jspm_packages/
+/bower_components/
+
+# Typescript
+*.tsbuildinfo
+
+# Vue.js
+/dist/
+/node_modules/
+/src/.sass-cache/
+*.log
